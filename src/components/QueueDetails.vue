@@ -64,6 +64,9 @@ export default defineComponent({
       showNoUsers: false
     }
   },
+  async created (): Promise<void> {
+    await genesyscloudService.fetchPresenceDefinitions()
+  },
   watch: {
     queue: async function (): Promise<void> {
       this.isLoading = true
@@ -106,7 +109,7 @@ export default defineComponent({
 
       const queueMember = this.queueMembers.find(member => member.id === userId)
       if (!queueMember?.user?.presence) {
-        console.error('User not find in queue')
+        console.error('User not found in queue')
         return
       }
 
@@ -119,7 +122,6 @@ export default defineComponent({
           if (eventBody.routingStatus.status === 'NOT_RESPONDING') {
             this.showNotRespondingAlert(queueMember.user)
           }
-
           break
       }
     },

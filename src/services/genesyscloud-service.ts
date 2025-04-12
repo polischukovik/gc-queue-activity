@@ -3,14 +3,16 @@ import config from '@/config/config'
 
 const routingApi = new platformClient.RoutingApi()
 const notificationsApi = new platformClient.NotificationsApi()
+const presenceApi = new platformClient.PresenceApi()
 
-let userStatusWebsocket : WebSocket
+let userStatusWebsocket: WebSocket
+let presenceDefinitions: { [key: string]: string } = {}
 
 export default {
   // Login to Genesys Cloud
   async loginImplicitGrant (): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search)
-    const environment = urlParams.get('environment') || localStorage.getItem('gc-environment') || 'mypurecloud.ie'
+    const environment = urlParams.get('environment') || localStorage.getItem('gc-environment') || 'mypurecloud.com'
     const client = platformClient.ApiClient.instance
 
     client.setPersistSettings(true, 'agent-monitoring-app')
@@ -22,8 +24,33 @@ export default {
     console.log('Authenticated')
   },
 
+  // Fetch presence definitions
+  async fetchPresenceDefinitions (): Promise<void> {
+    const opts = {
+      pageNumber: 1,
+      pageSize: 100,
+      deleted: 'false',
+      localeCode: 'en_US'
+    }
+
+    try {
+      const data = await presenceApi.getPresencedefinitions(opts)
+      if (data?.entities) {
+        presenceDefinitions = data.entities.reduce((acc: { [key: string]: string }, def) => {
+          if (def.id) {
+            acc[def.id] = def.languageLabels?.en_US || def.systemPresence || ''
+          }
+          return acc
+        }, {})
+      }
+
+      console.log('Presence definitions fetched:', presenceDefinitions)
+    } catch (err) {
+      console.error('Error fetching presence definitions', err)
+    }
+  },
+
   // Get the organization's queues.
-  // NOTE: For this sample only get the first 100.
   async getQueues (): Promise<undefined | platformClient.Models.Queue[]> {
     const data = await routingApi.getRoutingQueues({ pageSize: 100 })
     return data.entities
@@ -35,7 +62,6 @@ export default {
   },
 
   // Get the queue's members
-  // NOTE: For this sample only get the first 100.
   async getMembersOfQueue (queueId: string): Promise<undefined | platformClient.Models.QueueMember[]> {
     const data = await routingApi.getRoutingQueueMembers(queueId, { pageSize: 100, expand: ['presence', 'routingStatus'] })
     console.log(data)
@@ -61,7 +87,7 @@ export default {
     }
 
     // Subscribe to topics
-    const topics:platformClient.Models.ChannelTopic[] = []
+    const topics: platformClient.Models.ChannelTopic[] = []
     userIds.forEach(userId => {
       topics.push({
         id: `v2.users.${userId}?presence&routingStatus`
@@ -70,5 +96,10 @@ export default {
 
     await notificationsApi.postNotificationsChannelSubscriptions(channelId, topics)
     console.log('Subscribed to topics')
+  },
+
+  // Get presence name by presence ID
+  getPresenceName (presenceId: string): string {
+    return presenceDefinitions[presenceId] || presenceId
   }
 }

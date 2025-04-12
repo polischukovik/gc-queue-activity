@@ -10,7 +10,7 @@
       {{ name }}
     </div>
     <div class="presence">
-      {{ presence}}
+      {{ presence }}
     </div>
     <div class="routing-status">
       {{ routingStatus }}
@@ -59,14 +59,14 @@
 }
 
 .p-Offline {
-  background: #eee
+  background: #eee;
 }
 </style>
 
 <script lang="ts">
-// import genesyscloudService from '@/services/genesyscloud-service'
 import platformClient from 'purecloud-platform-client-v2'
 import { defineComponent } from 'vue'
+import genesyscloudService from '@/services/genesyscloud-service'
 
 const defaulProfilePicture = './img/default-face.png'
 
@@ -78,19 +78,20 @@ export default defineComponent({
     }
   },
   computed: {
-    name: function () {
+    name () {
       return this.queueMember?.name
     },
-    presence: function () {
-      return this.queueMember?.user?.presence?.presenceDefinition?.systemPresence
+    presence () {
+      const presenceId = this.queueMember?.user?.presence?.presenceDefinition?.id
+      return presenceId ? genesyscloudService.getPresenceName(presenceId) : ''
     },
-    routingStatus: function () {
+    routingStatus () {
       return this.queueMember?.user?.routingStatus?.status
     },
-    imageURI: function () {
+    imageURI () {
       const images = this.queueMember?.user?.images
       let imageUri = defaulProfilePicture
-      if (images) imageUri = images[images.length - 1].imageUri || imageUri
+      if (images) imageUri = images[images.length - 1]?.imageUri || imageUri
 
       return imageUri
     }
