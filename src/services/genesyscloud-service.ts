@@ -10,7 +10,7 @@ export default {
   // Login to Genesys Cloud
   async loginImplicitGrant (): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search)
-    const environment = urlParams.get('environment') || localStorage.getItem('gc-environment') || 'mypurecloud.com'
+    const environment = urlParams.get('environment') || localStorage.getItem('gc-environment') || 'mypurecloud.ie'
     const client = platformClient.ApiClient.instance
 
     client.setPersistSettings(true, 'agent-monitoring-app')

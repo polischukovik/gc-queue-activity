@@ -9,11 +9,11 @@
 
 <style scoped>
   select {
-    margin-top: 20px;
+    margin-top: 10px; /* Reduced margin */
     width: 100%;
-    height: 50px;
-    font-size: 1.5em;
-    padding-left: 10px;
+    height: 40px; /* Reduced height */
+    font-size: 1em; /* Reduced font size */
+    padding-left: 5px; /* Reduced padding */
     border: 1px solid #ccc;
     background-color: #fff;
   }

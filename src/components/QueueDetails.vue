@@ -19,10 +19,9 @@
 
 <style scoped>
 .container {
-  /* border: 1px solid #ccc; */
   display: flex;
   flex-direction: column;
-  margin-top: 10px;
+  margin-top: 5px; /* Reduced margin */
 }
 
 .table {
@@ -32,13 +31,13 @@
 }
 
 .loading {
-  margin: 30px;
-  font-size: 1.5em;
+  margin: 15px; /* Reduced margin */
+  font-size: 1em; /* Reduced font size */
 }
 
 .no-users {
-  margin: 30px;
-  font-size: 1.5em;
+  margin: 15px; /* Reduced margin */
+  font-size: 1em; /* Reduced font size */
 }
 </style>
 

@@ -18,7 +18,7 @@ body {
 }
 
 #nav {
-  padding: 30px;
+  padding: 10px; /* Reduced padding */
 }
 
 #nav a {

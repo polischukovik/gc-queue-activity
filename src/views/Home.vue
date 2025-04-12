@@ -1,8 +1,5 @@
 <template>
   <div class="container">
-    <div class="instructions">
-      Select a queue from the drop-down list and view all of the agents' status in real-time.
-    </div>
     <div class="home">
       <QueueSelector @queueSelected="onQueueSelected" />
       <QueueDetails :queue="queue" />
@@ -11,11 +8,6 @@
 </template>
 
 <style scoped>
-  .instructions {
-    font-size: 18px;
-    padding: 10px;
-  }
-
   .container {
     display: flex;
     flex-direction: column;
@@ -24,7 +16,7 @@
   }
 
   .home {
-    width: 900px;
+    width: 700px; /* Reduced width */
   }
 </style>
 

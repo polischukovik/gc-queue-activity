@@ -22,8 +22,8 @@
 .member-container {
   border: 1px solid #bbb;
   border-radius: 5px;
-  padding: 10px 20px;
-  margin: 5px;
+  padding: 5px 10px; /* Reduced padding */
+  margin: 2px; /* Reduced margin */
   display: flex;
   justify-content: space-between;
   flex-direction: row;
@@ -31,23 +31,23 @@
 }
 
 .profile-picture img {
-  width: 50px;
-  height: 50px;
+  width: 30px; /* Reduced image size */
+  height: 30px; /* Reduced image size */
   border-radius: 100px;
-  margin-right: 20px;
+  margin-right: 10px; /* Reduced margin */
 }
 
 .name {
   text-align: left;
-  width: 60%;
+  width: 50%; /* Adjusted width */
 }
 
 .presence {
-  width: 20%;
+  width: 25%; /* Adjusted width */
 }
 
 .routing-status {
-  width: 20%;
+  width: 25%; /* Adjusted width */
 }
 
 .rs-NOT_RESPONDING {
@@ -61,7 +61,6 @@
 .p-Offline {
   background: #eee
 }
-
 </style>
 
 <script lang="ts">
