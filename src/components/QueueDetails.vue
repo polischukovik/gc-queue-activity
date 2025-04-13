@@ -115,7 +115,10 @@ export default defineComponent({
 
       switch (updatedProperty) {
         case 'presence':
-          queueMember.user.presence.presenceDefinition = eventBody.presenceDefinition
+          if (queueMember.user.presence.presenceDefinition) {
+            queueMember.user.presence.presenceDefinition.systemPresence = genesyscloudService.getPresenceName(eventBody.presenceDefinition.id)
+          }
+          queueMember.user.presence.modifiedDate = eventBody.modifiedDate
           break
         case 'routingStatus':
           queueMember.user.routingStatus = eventBody.routingStatus
