@@ -4,24 +4,29 @@ import config from '@/config/config'
 const routingApi = new platformClient.RoutingApi()
 const notificationsApi = new platformClient.NotificationsApi()
 const presenceApi = new platformClient.PresenceApi()
+const client = platformClient.ApiClient.instance
 
 let userStatusWebsocket: WebSocket
 let presenceDefinitions: { [key: string]: string } = {}
+let serverOffset = 0
 
 export default {
-  // Login to Genesys Cloud
+  // Login to Genesys Cloud and fetch server time
   async loginImplicitGrant (): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search)
-    const environment = urlParams.get('environment') || localStorage.getItem('gc-environment') || 'mypurecloud.com'
-    const client = platformClient.ApiClient.instance
-
+    const environment = urlParams.get('environment') || localStorage.getItem('gc-environment') || 'mypurecloud.ie'
     client.setPersistSettings(true, 'agent-monitoring-app')
     client.setEnvironment(environment)
     localStorage.setItem('gc-environment', environment)
 
     await client.loginImplicitGrant(config.clientId, config.redirectUri)
-
     console.log('Authenticated')
+
+    // Fetch server time and calculate offset
+    const serverTime = await this.fetchServerTime()
+    serverOffset = serverTime.getTime() - Date.now()
+    console.log('Server Time:', serverTime)
+    console.log('Calculated Server Offset:', serverOffset)
   },
 
   // Fetch presence definitions
@@ -47,6 +52,34 @@ export default {
       console.log('Presence definitions fetched:', presenceDefinitions)
     } catch (err) {
       console.error('Error fetching presence definitions', err)
+    }
+  },
+
+  // Fetch current server time
+  async fetchServerTime (): Promise<Date> {
+    try {
+      const response = await client.callApi(
+        '/api/v2/date',
+        'GET',
+        {},
+        {},
+        {},
+        {},
+        null,
+        ['PureCloudPlatformClientV2'],
+        ['application/json'],
+        ['application/json']
+      )
+      console.log('Server time response:', response)
+      if (response && response.currentTime) {
+        return new Date(response.currentTime)
+      } else {
+        console.error('Invalid server time response:', response)
+        return new Date()
+      }
+    } catch (err) {
+      console.error('Error fetching server time', err)
+      return new Date()
     }
   },
 
@@ -101,5 +134,10 @@ export default {
   // Get presence name by presence ID
   getPresenceName (presenceId: string): string {
     return presenceDefinitions[presenceId] || presenceId
+  },
+
+  // Get server offset
+  getServerOffset (): number {
+    return serverOffset
   }
 }

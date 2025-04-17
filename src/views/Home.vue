@@ -2,22 +2,22 @@
   <div class="container">
     <div class="home">
       <QueueSelector @queueSelected="onQueueSelected" />
-      <QueueDetails :queue="queue" />
+      <QueueDetails :queue="queue" v-if="queue.id" />
     </div>
   </div>
 </template>
 
 <style scoped>
-  .container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-  }
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
 
-  .home {
-    width: 700px; /* Reduced width */
-  }
+.home {
+  width: 700px; /* Reduced width */
+}
 </style>
 
 <script lang="ts">
@@ -40,7 +40,9 @@ export default defineComponent({
   },
   methods: {
     async onQueueSelected (queueId: string): Promise<void> {
+      console.log('Queue selected:', queueId)
       this.queue = await genesysCloudService.getQueue(queueId) ?? {}
+      console.log('Queue ', this.queue)
     }
   }
 })

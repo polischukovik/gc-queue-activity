@@ -8,7 +8,7 @@
         v-for="queueMember of queueMembers"
         :key="queueMember.id"
       >
-        <QueueMemberDetails :queueMember="queueMember" />
+        <QueueMemberDetails :queueMember="queueMember" :serverTime="serverTime" />
       </div>
     </div>
     <div class="no-users" v-show="showNoUsers">
@@ -54,21 +54,27 @@ export default defineComponent({
   },
   props: {
     queue: {
-      type: Object as () => platformClient.Models.Queue
+      type: Object as () => platformClient.Models.Queue,
+      required: true
     }
   },
   data () {
     return {
       queueMembers: [] as platformClient.Models.QueueMember[],
       isLoading: false,
-      showNoUsers: false
+      showNoUsers: false,
+      serverTime: new Date()
     }
   },
   async created (): Promise<void> {
+    console.log('QueueDetails created')
     await genesyscloudService.fetchPresenceDefinitions()
+    this.serverTime = await genesyscloudService.fetchServerTime()
+    await this.loadQueueMembers()
   },
   watch: {
     queue: async function (): Promise<void> {
+      console.log('Queue changed:', this.queue)
       this.isLoading = true
       this.showNoUsers = false
 
@@ -77,21 +83,41 @@ export default defineComponent({
         return
       }
 
-      // When a queue is selected, display the queue members (max of 100)
+      await this.loadQueueMembers()
+      this.isLoading = false
+    }
+  },
+  methods: {
+    async loadQueueMembers (): Promise<void> {
+      if (!this.queue.id) {
+        console.error('Queue ID is undefined')
+        return
+      }
+      console.log('Loading queue members for queue:', this.queue.id)
       this.queueMembers = await genesyscloudService.getMembersOfQueue(this.queue.id) ?? []
+      console.log('Queue members loaded:', this.queueMembers)
+
+      // modifiedDate can be > now (!) -> modifiedDate := now
+      // TODO: issue - change status, refresh page - couter starts with 0 
+      //       each time until modifiedDate-now seconds elapses
+      const adjustedNow = new Date(Date.now() + genesyscloudService.getServerOffset())
+      this.queueMembers.forEach(member => {
+        if (member.user?.presence?.modifiedDate) {
+          const modifiedDate = new Date(member.user.presence.modifiedDate)
+          if (modifiedDate > adjustedNow) {
+            member.user.presence.modifiedDate = adjustedNow.toISOString()
+          }
+        }
+      })
+
       const userIds = this.queueMembers.map(member => member.id ?? '')
       if (userIds.length <= 0) {
         console.log('No users in queue')
         this.showNoUsers = true
       } else {
-        // Listen to user presence and routing status changes
         await genesyscloudService.subscribeToUsersStatus(userIds, [this.onUserEvent])
       }
-
-      this.isLoading = false
-    }
-  },
-  methods: {
+    },
     // Callback function when Genesys Cloud fires notifications based on the queue members
     onUserEvent (message: MessageEvent): void {
       const data = JSON.parse(message.data)
@@ -105,7 +131,7 @@ export default defineComponent({
 
       const userId = match[2]
       const updatedProperty = match[3]
-      console.log(userId)
+      console.log('User event:', userId, updatedProperty)
 
       const queueMember = this.queueMembers.find(member => member.id === userId)
       if (!queueMember?.user?.presence) {
@@ -114,18 +140,27 @@ export default defineComponent({
       }
 
       switch (updatedProperty) {
-        case 'presence':
+        case 'presence': {
           if (queueMember.user.presence.presenceDefinition) {
             queueMember.user.presence.presenceDefinition.systemPresence = genesyscloudService.getPresenceName(eventBody.presenceDefinition.id)
           }
-          queueMember.user.presence.modifiedDate = eventBody.modifiedDate
+          // modifiedDate can be > now (!) -> modifiedDate := now
+          const modifiedDate = new Date(eventBody.modifiedDate)
+          const adjustedNow = new Date(Date.now() + genesyscloudService.getServerOffset())
+          if (modifiedDate > adjustedNow) {
+            queueMember.user.presence.modifiedDate = adjustedNow.toISOString()
+          } else {
+            queueMember.user.presence.modifiedDate = eventBody.modifiedDate
+          }
           break
-        case 'routingStatus':
+        }
+        case 'routingStatus': {
           queueMember.user.routingStatus = eventBody.routingStatus
           if (eventBody.routingStatus.status === 'NOT_RESPONDING') {
             this.showNotRespondingAlert(queueMember.user)
           }
           break
+        }
       }
     },
     showNotRespondingAlert (user: platformClient.Models.User): void {

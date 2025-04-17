@@ -47,7 +47,8 @@
 
 .presence,
 .routing-status,
-.status-duration {
+.status-duration,
+.debug-info {
   width: 15%;
 }
 
@@ -62,10 +63,16 @@
 .p-Offline {
   background: #eee;
 }
+
+.debug-info {
+  font-size: 0.8em;
+  color: #666;
+}
 </style>
 
 <script lang="ts">
 import platformClient from 'purecloud-platform-client-v2'
+import genesysCloudService from '@/services/genesyscloud-service'
 import { defineComponent, PropType } from 'vue'
 
 const defaulProfilePicture = './img/default-face.png'
@@ -76,11 +83,17 @@ export default defineComponent({
     queueMember: {
       type: Object as PropType<platformClient.Models.QueueMember>,
       required: true
+    },
+    serverTime: {
+      type: Date,
+      required: true
     }
   },
   data () {
     return {
-      now: new Date()
+      now: new Date(),
+      serverNow: new Date(this.serverTime),
+      timer: null as ReturnType<typeof setInterval> | null
     }
   },
   computed: {
@@ -107,8 +120,11 @@ export default defineComponent({
     formattedTimeInStatus (): string {
       if (!this.modifiedDate) return ''
 
-      const timeNow = this.now.getTime() < this.modifiedDate.getTime() ? this.modifiedDate.getTime() : this.now.getTime()
-      const seconds = Math.floor((timeNow - this.modifiedDate.getTime()) / 1000)
+      // Adjust modifiedDate to local time using the same offset applied to server time
+      const adjustedModifiedDate = new Date(this.modifiedDate.getTime() - genesysCloudService.getServerOffset())
+
+      let seconds = Math.floor((this.now.getTime() - adjustedModifiedDate.getTime()) / 1000)
+      if (seconds < 0) seconds = 0
 
       const days = Math.floor(seconds / (3600 * 24))
       const hours = Math.floor(seconds / 3600)
@@ -121,9 +137,13 @@ export default defineComponent({
     }
   },
   mounted () {
-    setInterval(() => {
-      this.now = new Date()
+    this.timer = setInterval(() => {
+      this.now = new Date(Date.now() + genesysCloudService.getServerOffset())
+      this.serverNow = new Date(this.serverNow.getTime() + 1000)
     }, 1000)
+  },
+  beforeUnmount () {
+    if (this.timer) clearInterval(this.timer)
   }
 })
 </script>
