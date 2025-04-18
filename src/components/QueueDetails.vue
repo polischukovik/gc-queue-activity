@@ -98,7 +98,7 @@ export default defineComponent({
       console.log('Queue members loaded:', this.queueMembers)
 
       // modifiedDate can be > now (!) -> modifiedDate := now
-      // TODO: issue - change status, refresh page - couter starts with 0 
+      // TODO: issue - change status, refresh page - couter starts with 0
       //       each time until modifiedDate-now seconds elapses
       const adjustedNow = new Date(Date.now() + genesyscloudService.getServerOffset())
       this.queueMembers.forEach(member => {
