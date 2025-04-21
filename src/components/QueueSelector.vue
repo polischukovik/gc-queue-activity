@@ -98,45 +98,49 @@ import platformClient from 'purecloud-platform-client-v2'
 import genesysCloudService from '@/services/genesyscloud-service'
 import { defineComponent } from 'vue'
 
+// Local storage key for persisting selected queue
+const LAST_SELECTED_QUEUE_KEY = 'lastSelectedQueue'
+
 export default defineComponent({
   name: 'QueueSelector',
-  data () {
+  data() {
     return {
       queues: [] as platformClient.Models.Queue[],
       searchText: '',
       showDropdown: false,
       highlightedIndex: -1,
       selectedQueue: null as platformClient.Models.Queue | null,
-      isSelecting: false
+      isSelecting: false,
+      isLoaded: false
     }
   },
   computed: {
-    filteredQueues (): platformClient.Models.Queue[] {
+    filteredQueues(): platformClient.Models.Queue[] {
       return this.queues.filter(q =>
         (q.name ?? '').toLowerCase().includes(this.searchText.toLowerCase())
       )
     }
   },
   methods: {
-    toggleDropdown () {
+    toggleDropdown() {
       this.showDropdown = !this.showDropdown
       if (this.showDropdown && this.selectedQueue) {
         // Clear input when opening dropdown to search
         this.searchText = ''
       }
     },
-    handleInput () {
+    handleInput() {
       this.isSelecting = true
       this.showDropdown = true
     },
-    handleFocus () {
+    handleFocus() {
       // When input gets focus, prepare for selecting a new queue
       this.isSelecting = true
       if (this.isSelecting) {
         this.searchText = ''
       }
     },
-    handleEscape () {
+    handleEscape() {
       // Close dropdown and restore selected queue name
       this.showDropdown = false
       this.isSelecting = false
@@ -150,21 +154,21 @@ export default defineComponent({
       // Remove focus from input
       this.blurInput()
     },
-    highlightNext () {
+    highlightNext() {
       if (!this.filteredQueues.length) return
       this.highlightedIndex = (this.highlightedIndex + 1) % this.filteredQueues.length
     },
-    highlightPrevious () {
+    highlightPrevious() {
       if (!this.filteredQueues.length) return
       this.highlightedIndex =
         (this.highlightedIndex - 1 + this.filteredQueues.length) % this.filteredQueues.length
     },
-    selectHighlighted () {
+    selectHighlighted() {
       if (this.highlightedIndex >= 0 && this.highlightedIndex < this.filteredQueues.length) {
         this.selectQueue(this.filteredQueues[this.highlightedIndex])
       }
     },
-    selectQueue (queue: platformClient.Models.Queue) {
+    selectQueue(queue: platformClient.Models.Queue) {
       this.selectedQueue = queue
       this.searchText = queue.name || '' // Set input to selected queue name
       this.$emit('queueSelected', queue.id)
@@ -172,10 +176,13 @@ export default defineComponent({
       this.highlightedIndex = -1
       this.isSelecting = false
 
+      // Save selected queue to localStorage
+      this.saveSelectedQueue(queue)
+
       // Remove focus from input after selection
       this.blurInput()
     },
-    blurInput () {
+    blurInput() {
       // Use nextTick to ensure DOM has updated before trying to blur
       this.$nextTick(() => {
         const inputElement = this.$refs.queueInput as HTMLInputElement
@@ -183,13 +190,66 @@ export default defineComponent({
           inputElement.blur()
         }
       })
+    },
+    saveSelectedQueue(queue: platformClient.Models.Queue) {
+      try {
+        const queueData = {
+          id: queue.id,
+          name: queue.name
+        }
+        localStorage.setItem(LAST_SELECTED_QUEUE_KEY, JSON.stringify(queueData))
+      } catch (e) {
+        console.error('Failed to save queue to localStorage:', e)
+      }
+    },
+    loadSelectedQueue() {
+      try {
+        const savedQueueData = localStorage.getItem(LAST_SELECTED_QUEUE_KEY)
+        if (savedQueueData) {
+          const queueData = JSON.parse(savedQueueData)
+          // Return the parsed data
+          return queueData
+        }
+      } catch (e) {
+        console.error('Failed to load queue from localStorage:', e)
+      }
+      return null
+    },
+    selectQueueById(queueId: string) {
+      const queue = this.queues.find(q => q.id === queueId)
+      if (queue) {
+        this.selectQueue(queue)
+      }
+    },
+    handleQueueData() {
+      // If only one queue exists, select it automatically
+      if (this.queues.length === 1) {
+        this.selectQueue(this.queues[0])
+        return
+      }
+
+      // Otherwise try to load the last selected queue
+      const savedQueue = this.loadSelectedQueue()
+      if (savedQueue) {
+        // Verify the queue still exists in our current queue list
+        const existingQueue = this.queues.find(q => q.id === savedQueue.id)
+        if (existingQueue) {
+          this.selectedQueue = existingQueue
+          this.searchText = existingQueue.name || ''
+          this.$emit('queueSelected', existingQueue.id)
+        }
+      }
     }
   },
   emits: ['queueSelected'],
-  created () {
+  created() {
     genesysCloudService.getQueues()
       .then(queues => {
-        if (queues) this.queues = queues
+        if (queues) {
+          this.queues = queues
+          this.isLoaded = true
+          this.handleQueueData()
+        }
       })
       .catch(err => console.error(err))
   }
