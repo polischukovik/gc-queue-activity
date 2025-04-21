@@ -163,8 +163,17 @@ export default defineComponent({
       switch (updatedProperty) {
         case 'presence': {
           if (queueMember.user.presence && eventBody.presenceDefinition) {
+            // Store the original presence ID and system presence before updating
+            const presenceId = eventBody.presenceDefinition.id || ''
+            const originalSystemPresence = genesyscloudService.getPresenceName(presenceId)
+            
             // Update the presence definition
             queueMember.user.presence.presenceDefinition = eventBody.presenceDefinition
+            
+            // Always store the original system presence
+            if (queueMember.user.presence.presenceDefinition) {
+              queueMember.user.presence.presenceDefinition.originalSystemPresence = originalSystemPresence
+            }
             
             // Safely update modifiedDate
             // modifiedDate can be > now (!) -> modifiedDate := now
@@ -176,15 +185,6 @@ export default defineComponent({
               queueMember.user.presence.modifiedDate = eventBody.modifiedDate
             }
             
-            // Store original presence ID for reference
-            const presenceId = eventBody.presenceDefinition.id || ''
-            
-            // Store the original value - safely
-            if (queueMember.user.presence.presenceDefinition) {
-              queueMember.user.presence.presenceDefinition.originalSystemPresence = 
-                genesyscloudService.getPresenceName(presenceId)
-            }
-              
             // After updating presence, recalculate the effective status
             this.updateEffectiveStatusForMember(queueMember)
           }
@@ -211,6 +211,13 @@ export default defineComponent({
       if (!queueMember?.user?.presence?.presenceDefinition?.id) return;
       
       const presenceId = queueMember.user.presence.presenceDefinition.id;
+      
+      // Store the original system presence for later color determination
+      // This ensures we remember the base status even when overridden by Out of Office
+      if (queueMember.user.presence.presenceDefinition && !queueMember.user.presence.presenceDefinition.originalSystemPresence) {
+        queueMember.user.presence.presenceDefinition.originalSystemPresence = 
+          genesyscloudService.getPresenceName(presenceId);
+      }
       
       // Convert to OutOfOfficeData
       const outOfOfficeData = convertToOutOfOfficeData(queueMember.user.outOfOffice);

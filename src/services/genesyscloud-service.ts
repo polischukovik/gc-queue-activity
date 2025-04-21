@@ -49,6 +49,7 @@ export default {
     try {
       const data = await presenceApi.getPresenceDefinitions0(opts)
       if (data?.entities) {
+        console.log(`raw presence: ${JSON.stringify(data?.entities,null,2)}`)
         presenceDefinitions = data.entities.reduce((acc: { [key: string]: string }, def) => {
           if (def.id) {
             acc[def.id] = def.languageLabels?.en_US || def.systemPresence || ''

@@ -111,6 +111,10 @@ export default defineComponent({
     presence (): string | undefined {
       return this.queueMember?.user?.presence?.presenceDefinition?.systemPresence
     },
+    // Get the original system presence (primary status)
+    originalPresence (): string | undefined {
+      return this.queueMember?.user?.presence?.presenceDefinition?.originalSystemPresence
+    },
     imageURI (): string {
       const images = this.queueMember?.user?.images
       let imageUri = defaultProfilePicture
@@ -141,25 +145,64 @@ export default defineComponent({
       return `${seconds}<small>s</small>`
     },
     presenceColor (): string {
-      const presence = this.presence?.toLowerCase()
-      switch (presence) {
-        case 'out of office':
-          return '#ff1dce' // Pink
-        case 'on queue':
-          return '#52cef8'
-        case 'available':
-          return '#00FF00' // Green
-        case 'busy':
-        case 'meeting':
-          return '#FF0000' // Red
-        case 'away':
-        case 'break':
-        case 'meal':
-        case 'training':
-          return '#FFFF00' // Yellow
-        default:
-          return '#CCCCCC' // Default gray
+      // Special case for Out of Office
+      if (this.presence === 'Out of Office') {
+        return '#ff1dce' // Pink
       }
+      
+      // For custom statuses, use the original system presence for color determination
+      const originalPresence = this.originalPresence?.toLowerCase();
+      const currentPresence = this.presence?.toLowerCase();
+      
+      // First try to use the original presence if available
+      if (originalPresence) {
+        switch (originalPresence) {
+          case 'onqueue':
+          case 'on queue':
+            return '#52cef8'
+          case 'available':
+            return '#00FF00' // Green
+          case 'busy':
+            return '#FF0000' // Red
+          case 'meeting':
+            return '#FF0000' // Red
+          case 'away':
+          case 'break':
+          case 'meal':
+          case 'training':
+            return '#FFFF00' // Yellow
+        }
+      }
+      
+      // Fall back to current presence if original is not available or not recognized
+      if (currentPresence) {
+        switch (currentPresence) {
+          case 'onqueue':
+          case 'on queue':
+            return '#52cef8'
+          case 'available':
+            return '#00FF00' // Green
+          case 'busy':
+            return '#FF0000' // Red
+          case 'meeting':
+          case '1on1':
+          case 'team':
+            return '#FF0000' // Red for all meeting types
+          case 'away':
+          case 'break':
+          case 'meal':
+          case 'training':
+            return '#FFFF00' // Yellow
+          case 'project work':
+          case 'tasks-customer facing':
+          case 'tasks-non customer facing':
+          case 'email':
+            return '#FF0000' // Red for all busy types
+        }
+      }
+      
+      // Default if nothing matches
+      return '#CCCCCC' // Default gray
     }
   },
   mounted () {
