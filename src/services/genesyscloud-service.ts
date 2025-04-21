@@ -10,6 +10,14 @@ let userStatusWebsocket: WebSocket
 let presenceDefinitions: { [key: string]: string } = {}
 let serverOffset = 0
 
+// Define the OutOfOffice interface
+interface OutOfOfficeData {
+  active: boolean
+  indefinite: boolean
+  startDate?: string
+  endDate?: string
+}
+
 export default {
   // Login to Genesys Cloud and fetch server time
   async loginImplicitGrant (): Promise<void> {
@@ -39,7 +47,7 @@ export default {
     }
 
     try {
-      const data = await presenceApi.getPresencedefinitions(opts)
+      const data = await presenceApi.getPresenceDefinitions0(opts)
       if (data?.entities) {
         presenceDefinitions = data.entities.reduce((acc: { [key: string]: string }, def) => {
           if (def.id) {
@@ -96,7 +104,7 @@ export default {
 
   // Get the queue's members
   async getMembersOfQueue (queueId: string): Promise<undefined | platformClient.Models.QueueMember[]> {
-    const data = await routingApi.getRoutingQueueMembers(queueId, { pageSize: 100, expand: ['presence', 'routingStatus'] })
+    const data = await routingApi.getRoutingQueueMembers(queueId, { pageSize: 100, expand: ['presence', 'routingStatus', 'outOfOffice'] })
     console.log(data)
     return data.entities
   },
@@ -122,8 +130,9 @@ export default {
     // Subscribe to topics
     const topics: platformClient.Models.ChannelTopic[] = []
     userIds.forEach(userId => {
+      // Combined topic for presence, routingStatus, and outOfOffice
       topics.push({
-        id: `v2.users.${userId}?presence&routingStatus`
+        id: `v2.users.${userId}?presence&routingStatus&outofoffice`
       })
     })
 
@@ -135,6 +144,35 @@ export default {
   getPresenceName (presenceId: string): string {
     console.log('resolving presence name by id:' + presenceId + ' => ' + presenceDefinitions[presenceId] || presenceId)
     return presenceDefinitions[presenceId] || presenceId
+  },
+
+  // Check if user is out of office
+  isOutOfOffice (outOfOfficeData: OutOfOfficeData | null): boolean {
+    if (!outOfOfficeData) return false
+
+    // Check if indefinite out of office is active
+    if (outOfOfficeData.active && outOfOfficeData.indefinite) {
+      return true
+    }
+
+    // Check if scheduled out of office is active
+    if (outOfOfficeData.active && !outOfOfficeData.indefinite) {
+      const now = new Date(Date.now() + serverOffset) // Use server time
+      const startDate = outOfOfficeData.startDate ? new Date(outOfOfficeData.startDate) : null
+      const endDate = outOfOfficeData.endDate ? new Date(outOfOfficeData.endDate) : null
+
+      return startDate !== null && endDate !== null && now >= startDate && now <= endDate
+    }
+
+    return false
+  },
+
+  // Get effective status that considers out of office
+  getEffectiveStatus (presenceId: string, outOfOfficeData: OutOfOfficeData | null): string {
+    if (this.isOutOfOffice(outOfOfficeData)) {
+      return 'Out of Office'
+    }
+    return this.getPresenceName(presenceId)
   },
 
   // Get server offset

@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "core-js": "^3.6.5",
-    "purecloud-platform-client-v2": "^125.0.0",
+    "purecloud-platform-client-v2": "^219.0.0",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0-0"
   },
