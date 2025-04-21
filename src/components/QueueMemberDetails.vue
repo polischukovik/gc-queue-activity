@@ -143,6 +143,8 @@ export default defineComponent({
     presenceColor (): string {
       const presence = this.presence?.toLowerCase()
       switch (presence) {
+        case 'out of office':
+          return '#ff1dce' // Pink
         case 'on queue':
           return '#52cef8'
         case 'available':
@@ -155,8 +157,6 @@ export default defineComponent({
         case 'meal':
         case 'training':
           return '#FFFF00' // Yellow
-        case 'out of office':
-          return '#FFC0CB' // Pink
         default:
           return '#CCCCCC' // Default gray
       }

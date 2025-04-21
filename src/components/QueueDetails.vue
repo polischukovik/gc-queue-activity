@@ -162,29 +162,11 @@ export default defineComponent({
 
       switch (updatedProperty) {
         case 'presence': {
-          if (queueMember.user.presence?.presenceDefinition) {
-            // Store original presence ID
-            const presenceId = eventBody.presenceDefinition.id
+          if (queueMember.user.presence && eventBody.presenceDefinition) {
+            // Update the presence definition
+            queueMember.user.presence.presenceDefinition = eventBody.presenceDefinition
             
-            // Convert OutOfOffice to OutOfOfficeData
-            const outOfOfficeData = convertToOutOfOfficeData(queueMember.user.outOfOffice)
-            
-            // Update the status considering out of office
-            const effectiveStatus = genesyscloudService.getEffectiveStatus(
-              presenceId, 
-              outOfOfficeData
-            )
-            
-            // Store the original value
-            queueMember.user.presence.presenceDefinition.originalSystemPresence = 
-              genesyscloudService.getPresenceName(presenceId)
-              
-            // Set the effective status
-            queueMember.user.presence.presenceDefinition.systemPresence = effectiveStatus
-          }
-          
-          // Safely update modifiedDate
-          if (queueMember.user.presence) {
+            // Safely update modifiedDate
             // modifiedDate can be > now (!) -> modifiedDate := now
             const modifiedDate = new Date(eventBody.modifiedDate)
             const adjustedNow = new Date(Date.now() + genesyscloudService.getServerOffset())
@@ -193,6 +175,18 @@ export default defineComponent({
             } else {
               queueMember.user.presence.modifiedDate = eventBody.modifiedDate
             }
+            
+            // Store original presence ID for reference
+            const presenceId = eventBody.presenceDefinition.id || ''
+            
+            // Store the original value - safely
+            if (queueMember.user.presence.presenceDefinition) {
+              queueMember.user.presence.presenceDefinition.originalSystemPresence = 
+                genesyscloudService.getPresenceName(presenceId)
+            }
+              
+            // After updating presence, recalculate the effective status
+            this.updateEffectiveStatusForMember(queueMember)
           }
           break
         }
@@ -207,21 +201,26 @@ export default defineComponent({
           // Update out of office data
           queueMember.user.outOfOffice = eventBody
           
-          // If we have presence information, update the effective status
-          if (queueMember.user.presence?.presenceDefinition?.id) {
-            const presenceId = queueMember.user.presence.presenceDefinition.id
-            
-            // Convert to OutOfOfficeData
-            const outOfOfficeData = convertToOutOfOfficeData(eventBody)
-            
-            // Update the effective status considering the new out of office state
-            const effectiveStatus = genesyscloudService.getEffectiveStatus(presenceId, outOfOfficeData)
-            
-            // Update the displayed status
-            queueMember.user.presence.presenceDefinition.systemPresence = effectiveStatus
-          }
+          // After updating outOfOffice, recalculate the effective status
+          this.updateEffectiveStatusForMember(queueMember)
           break
         }
+      }
+    },
+    updateEffectiveStatusForMember(queueMember: platformClient.Models.QueueMember): void {
+      if (!queueMember?.user?.presence?.presenceDefinition?.id) return;
+      
+      const presenceId = queueMember.user.presence.presenceDefinition.id;
+      
+      // Convert to OutOfOfficeData
+      const outOfOfficeData = convertToOutOfOfficeData(queueMember.user.outOfOffice);
+      
+      // Update the effective status considering the current presence and out of office state
+      const effectiveStatus = genesyscloudService.getEffectiveStatus(presenceId, outOfOfficeData);
+      
+      // Update the displayed status - with proper type safety
+      if (queueMember.user.presence.presenceDefinition) {
+        queueMember.user.presence.presenceDefinition.systemPresence = effectiveStatus;
       }
     },
     showNotRespondingAlert (user: platformClient.Models.User): void {
