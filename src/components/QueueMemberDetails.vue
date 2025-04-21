@@ -19,18 +19,20 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  margin: 2px;
+  margin: 0;
   background: #FAFAFA;
   border: 1px solid #E3E3E3;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .profile-picture {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 3px solid #ccc; /* Thicker border for status indication */
+  border: 2px solid #ccc;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -61,7 +63,7 @@
 .status-line {
   display: flex;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 6px;
   color: #4E5054;
   font-size: 0.75rem;
   text-align: left;

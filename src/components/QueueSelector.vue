@@ -32,9 +32,11 @@
 
 <style scoped>
 .queue-selector {
-  position: relative;
+  position: sticky;
+  top: 0;
   width: 100%;
-  font-family: sans-serif;
+  z-index: 100;
+  padding-bottom: 6px;
 }
 
 .input-wrapper {
@@ -47,15 +49,26 @@ input {
   width: 100%;
   height: 40px;
   font-size: 1em;
-  padding: 0 30px 0 10px;
+  padding: 0 36px 0 12px;
   box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #E3E3E3;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  color: #23395D;
+}
+
+input:focus {
+  border-color: #007acc;
+  outline: none;
+}
+
+input::placeholder {
+  color: #959699;
 }
 
 .dropdown-icon {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
@@ -67,29 +80,46 @@ input {
   position: absolute;
   z-index: 10;
   width: 100%;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
   background: #fff;
-  border: 1px solid #ccc;
-  border-top: none;
-  border-radius: 0 0 4px 4px;
-  margin-top: -1px;
-  padding: 0;
+  border: 1px solid #E3E3E3;
+  border-radius: 0 0 8px 8px;
+  margin-top: 1px;
+  padding: 2px 0;
   list-style: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .dropdown-list li {
-  padding: 10px;
+  padding: 8px 12px;
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #23395D;
 }
 
 .dropdown-list li.highlighted {
   background-color: #007acc;
   color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  input {
+    height: 36px;
+    font-size: 0.95em;
+  }
+  
+  .dropdown-list {
+    max-height: 250px;
+  }
+  
+  .dropdown-list li {
+    padding: 8px 10px;
+  }
 }
 </style>
 

@@ -3,21 +3,33 @@
 </template>
 
 <style>
-body {
+html, body {
   height: 100%;
   margin: 0;
-}
-
-#app {
+  padding: 0;
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
   color: #2c3e50;
+  background-color: #f5f7fa;
+  /* Ensure no implicit minimum width from body */
+  min-width: 0;
+}
+
+#app {
+  min-height: 100vh;
+  /* Add a minimum width for the application content */
+  min-width: 320px; /* Adjust this value as needed */
+  text-align: center;
+  padding: 16px;
+  box-sizing: border-box;
+  /* Allow content within #app to contribute to its minimum width if needed */
+  width: 100%; /* Ensure it takes full width up to its container */
+  overflow-x: hidden; /* Hide horizontal overflow if any child content exceeds min-width */
 }
 
 #nav {
-  padding: 10px; /* Reduced padding */
+  padding: 10px;
 }
 
 #nav a {
@@ -31,6 +43,19 @@ body {
 
 select {
   color: #2c3e50;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  #app {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  #app {
+    padding: 8px;
+  }
 }
 </style>
 

@@ -1,12 +1,14 @@
 <template>
   <div class="container">
     <div class="loading" v-show="isLoading">
+      <div class="loading-spinner"></div>
       Loading Members...
     </div>
     <div class="table" v-show="!isLoading">
       <div
         v-for="queueMember of queueMembers"
         :key="queueMember.id"
+        class="member-row"
       >
         <QueueMemberDetails :queueMember="queueMember" :serverTime="serverTime" />
       </div>
@@ -16,6 +18,83 @@
     </div>
   </div>
 </template>
+
+<style scoped>
+.container {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  width: 100%;
+  padding-top: 0;
+}
+
+.table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-row {
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  font-size: 0.9em;
+  color: #4E5054;
+  gap: 8px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #E3E3E3;
+  border-top: 2px solid #007acc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.no-users {
+  padding: 12px;
+  font-size: 0.9em;
+  color: #4E5054;
+  text-align: center;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    max-height: calc(100vh - 110px);
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    margin-top: 3px;
+    max-height: calc(100vh - 100px);
+  }
+  
+  .loading, .no-users {
+    padding: 10px;
+    font-size: 0.85em;
+  }
+  
+  .table {
+    gap: 3px;
+  }
+}
+</style>
 
 <script lang="ts">
 import genesyscloudService from '@/services/genesyscloud-service'
@@ -236,27 +315,3 @@ export default defineComponent({
   }
 })
 </script>
-
-<style scoped>
-.container {
-  display: flex;
-  flex-direction: column;
-  margin-top: 5px; /* Reduced margin */
-}
-
-.table {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.loading {
-  margin: 15px; /* Reduced margin */
-  font-size: 1em; /* Reduced font size */
-}
-
-.no-users {
-  margin: 15px; /* Reduced margin */
-  font-size: 1em; /* Reduced font size */
-}
-</style>

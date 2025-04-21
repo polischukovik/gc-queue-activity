@@ -11,12 +11,33 @@
 .container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
+  width: 100%;
 }
 
 .home {
-  width: 700px; /* Reduced width */
+  width: 100%;
+  max-width: 700px;
+  box-sizing: border-box;
+  padding: 0 8px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .home {
+    max-width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-top: 8px;
+  }
+  
+  .home {
+    max-width: 100%;
+  }
 }
 </style>
 
