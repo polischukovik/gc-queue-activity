@@ -1,5 +1,4 @@
 <template>
-  <AppHeader/>
   <router-view/>
 </template>
 
@@ -37,14 +36,10 @@ select {
 
 <script lang="ts">
 import genesysCloud from '@/services/genesyscloud-service'
-import AppHeader from '@/components/AppHeader.vue'
 import config from '@/config/config'
 
 export default {
   name: 'Agent Monitoring App',
-  components: {
-    AppHeader
-  },
   async created (): Promise<void> {
     await genesysCloud.loginImplicitGrant()
     history.pushState({}, '', config.redirectUri)

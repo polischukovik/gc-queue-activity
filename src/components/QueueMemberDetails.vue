@@ -143,7 +143,7 @@ export default defineComponent({
     presenceColor (): string {
       const presence = this.presence?.toLowerCase()
       switch (presence) {
-        case "on queue":
+        case 'on queue':
           return '#52cef8'
         case 'available':
           return '#00FF00' // Green
