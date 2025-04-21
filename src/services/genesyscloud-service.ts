@@ -133,6 +133,7 @@ export default {
 
   // Get presence name by presence ID
   getPresenceName (presenceId: string): string {
+    console.log('resolving presence name by id:' + presenceId + ' => ' + presenceDefinitions[presenceId] || presenceId)
     return presenceDefinitions[presenceId] || presenceId
   },
 
