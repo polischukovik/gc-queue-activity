@@ -245,15 +245,15 @@ export default defineComponent({
             // Store the original presence ID and system presence before updating
             const presenceId = eventBody.presenceDefinition.id || ''
             const originalSystemPresence = genesyscloudService.getPresenceName(presenceId)
-            
+
             // Update the presence definition
             queueMember.user.presence.presenceDefinition = eventBody.presenceDefinition
-            
+
             // Always store the original system presence
             if (queueMember.user.presence.presenceDefinition) {
               queueMember.user.presence.presenceDefinition.originalSystemPresence = originalSystemPresence
             }
-            
+
             // Safely update modifiedDate
             // modifiedDate can be > now (!) -> modifiedDate := now
             const modifiedDate = new Date(eventBody.modifiedDate)
@@ -263,23 +263,26 @@ export default defineComponent({
             } else {
               queueMember.user.presence.modifiedDate = eventBody.modifiedDate
             }
-            
+
             // After updating presence, recalculate the effective status
             this.updateEffectiveStatusForMember(queueMember)
           }
           break
         }
         case 'routingStatus': {
+          // Update routing status
           queueMember.user.routingStatus = eventBody.routingStatus
-          if (eventBody.routingStatus.status === 'NOT_RESPONDING') {
-            this.showNotRespondingAlert(queueMember.user)
-          }
+          
+          // No need to show an alert anymore as we'll highlight it visually
+          // if (eventBody.routingStatus.status === 'NOT_RESPONDING') {
+          //   this.showNotRespondingAlert(queueMember.user)
+          // }
           break
         }
         case 'outofoffice': {
           // Update out of office data
           queueMember.user.outOfOffice = eventBody
-          
+
           // After updating outOfOffice, recalculate the effective status
           this.updateEffectiveStatusForMember(queueMember)
           break
@@ -308,9 +311,6 @@ export default defineComponent({
       if (queueMember.user.presence.presenceDefinition) {
         queueMember.user.presence.presenceDefinition.systemPresence = effectiveStatus;
       }
-    },
-    showNotRespondingAlert (user: platformClient.Models.User): void {
-      alert(`${user.name} is not responding.`)
     }
   }
 })

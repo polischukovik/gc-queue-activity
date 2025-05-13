@@ -1,5 +1,5 @@
 <template>
-  <div class="member-container">
+  <div class="member-container" :class="{ 'not-responding': isNotResponding }">
     <div class="profile-picture" :style="{ borderColor: presenceColor }">
       <img :src="imageURI" />
     </div>
@@ -7,6 +7,7 @@
       <div class="name">{{ name }}</div>
       <div class="status-line">
         <span class="presence">{{ presence }}</span>
+        <span v-if="isNotResponding" class="not-responding-badge">Not Responding</span>
         <span class="status-duration" v-html="formattedTimeInStatus"></span>
       </div>
     </div>
@@ -26,6 +27,13 @@
   font-size: 0.85rem;
   width: 100%;
   box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.member-container.not-responding {
+  background: rgba(255, 232, 232, 0.9);
+  border-color: #FFAAAA;
+  box-shadow: 0 0 5px rgba(255, 0, 0, 0.15);
 }
 
 .profile-picture {
@@ -78,6 +86,23 @@
   font-size: 0.65rem;
   color: #959699;
 }
+
+.not-responding-badge {
+  background-color: #ff3333;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
 </style>
 
 <script lang="ts">
@@ -117,6 +142,10 @@ export default defineComponent({
     originalPresence (): string | undefined {
       return this.queueMember?.user?.presence?.presenceDefinition?.originalSystemPresence
     },
+    // Check if the agent is in Not Responding state
+    isNotResponding (): boolean {
+      return this.queueMember?.user?.routingStatus?.status === 'NOT_RESPONDING'
+    },
     imageURI (): string {
       const images = this.queueMember?.user?.images
       let imageUri = defaultProfilePicture
@@ -147,15 +176,20 @@ export default defineComponent({
       return `${seconds}<small>s</small>`
     },
     presenceColor (): string {
+      // If agent is in Not Responding state, return a distinct color
+      if (this.isNotResponding) {
+        return '#ff3333' // Bright red for Not Responding
+      }
+      
       // Special case for Out of Office
       if (this.presence === 'Out of Office') {
         return '#ff1dce' // Pink
       }
-      
+
       // For custom statuses, use the original system presence for color determination
       const originalPresence = this.originalPresence?.toLowerCase();
       const currentPresence = this.presence?.toLowerCase();
-      
+
       // First try to use the original presence if available
       if (originalPresence) {
         switch (originalPresence) {
@@ -175,7 +209,7 @@ export default defineComponent({
             return '#FFFF00' // Yellow
         }
       }
-      
+
       // Fall back to current presence if original is not available or not recognized
       if (currentPresence) {
         switch (currentPresence) {
@@ -202,7 +236,7 @@ export default defineComponent({
             return '#FF0000' // Red for all busy types
         }
       }
-      
+
       // Default if nothing matches
       return '#CCCCCC' // Default gray
     }
