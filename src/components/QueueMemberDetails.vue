@@ -110,7 +110,7 @@ import platformClient from 'purecloud-platform-client-v2'
 import genesysCloudService from '@/services/genesyscloud-service'
 import { defineComponent, PropType } from 'vue'
 
-const defaultProfilePicture = '.\\img\\icon-queue-activity.svg'
+const defaultProfilePicture = '/img/icon-queue-activity.svg';
 
 export default defineComponent({
   name: 'QueueMemberDetails',

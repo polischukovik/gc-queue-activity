@@ -6,7 +6,7 @@
     </div>
     <div class="table" v-show="!isLoading">
       <div
-        v-for="queueMember of queueMembers"
+        v-for="queueMember of sortedQueueMembers"
         :key="queueMember.id"
         class="member-row"
       >
@@ -140,6 +140,14 @@ export default defineComponent({
       isLoading: false,
       showNoUsers: false,
       serverTime: new Date()
+    }
+  },
+  computed: {
+    sortedQueueMembers(): platformClient.Models.QueueMember[] {
+      return [...this.queueMembers].sort((a, b) => {
+        if (a.joined === b.joined) return 0;
+        return a.joined ? -1 : 1;
+      });
     }
   },
   async created (): Promise<void> {
@@ -283,7 +291,7 @@ export default defineComponent({
           // Update out of office data
           queueMember.user.outOfOffice = eventBody
 
-          // After updating outOfOffice, recalculate the effective status
+          // After updating out ofOffice, recalculate the effective status
           this.updateEffectiveStatusForMember(queueMember)
           break
         }

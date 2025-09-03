@@ -94,8 +94,20 @@ export default {
 
   // Get the organization's queues.
   async getQueues (): Promise<undefined | platformClient.Models.Queue[]> {
-    const data = await routingApi.getRoutingQueues({ pageSize: 100 })
-    return data.entities
+    let allQueues: platformClient.Models.Queue[] = []
+    let pageNumber = 1
+    let pageCount = 1
+
+    do {
+      const data = await routingApi.getRoutingQueues({ pageSize: 500, pageNumber: pageNumber })
+      if (data.entities) {
+        allQueues = allQueues.concat(data.entities)
+      }
+      pageCount = data.pageCount || 1
+      pageNumber++
+    } while (pageNumber <= pageCount)
+
+    return allQueues
   },
 
   async getQueue (queueId: string): Promise<platformClient.Models.Queue> {
