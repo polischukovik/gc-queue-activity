@@ -9,6 +9,7 @@
         <span class="presence">{{ presence }}</span>
         <span v-if="isNotResponding" class="not-responding-badge">Not Responding</span>
         <span class="status-duration" v-html="formattedTimeInStatus"></span>
+        <span v-if="!queueMember.joined" class="joined-status inactive">{{ joinedStatus }}</span>
       </div>
     </div>
   </div>
@@ -98,6 +99,16 @@
   animation: pulse 1.5s infinite;
 }
 
+.joined-status.inactive {
+  background-color: #f44336;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 @keyframes pulse {
   0% { opacity: 1; }
   50% { opacity: 0.7; }
@@ -145,6 +156,9 @@ export default defineComponent({
     // Check if the agent is in Not Responding state
     isNotResponding (): boolean {
       return this.queueMember?.user?.routingStatus?.status === 'NOT_RESPONDING'
+    },
+    joinedStatus (): string {
+      return this.queueMember?.joined ? '' : 'Inactive'
     },
     imageURI (): string {
       const images = this.queueMember?.user?.images

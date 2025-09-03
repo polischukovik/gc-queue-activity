@@ -154,6 +154,7 @@ export default defineComponent({
     console.log('QueueDetails created')
     await genesyscloudService.fetchPresenceDefinitions()
     this.serverTime = await genesyscloudService.fetchServerTime()
+    await genesyscloudService.createNotificationChannel(this.onNotification)
     await this.loadQueueMembers()
   },
   watch: {
@@ -195,14 +196,21 @@ export default defineComponent({
         }
       })
 
-      const userIds = this.queueMembers.map(member => member.id ?? '')
-      if (userIds.length <= 0) {
+      if (this.queueMembers.length <= 0) {
         console.log('No users in queue')
         this.showNoUsers = true
-      } else {
-        await genesyscloudService.subscribeToUsersStatus(userIds, [this.onUserEvent])
       }
+      await this.updateSubscriptions()
     },
+
+    async updateSubscriptions (): Promise<void> {
+      if (!this.queue.id) return
+      const userIds = this.queueMembers.map(member => member.id ?? '')
+      const topics = userIds.map(userId => ({ id: `v2.users.${userId}?presence&routingStatus&outofoffice` }))
+      topics.push({ id: `v2.routing.queues.${this.queue.id}.users` })
+      await genesyscloudService.subscribeToTopics(topics)
+    },
+
     // Update all members' effective statuses
     updateEffectiveStatuses(): void {
       this.queueMembers.forEach(member => {
@@ -227,73 +235,96 @@ export default defineComponent({
       })
     },
     // Callback function when Genesys Cloud fires notifications based on the queue members
-    onUserEvent (message: MessageEvent): void {
-      const data = JSON.parse(message.data)
+    onNotification (data: any): void {
       const topicName = data.topicName
       const eventBody = data.eventBody
 
-      // Update agent view
-      const topicRegex = /(v2\.users\.)(.*)\.(.*)/g
-      const match = topicRegex.exec(topicName)
-      if (!match) return
+      if (topicName.includes('v2.users')) {
+        const topicRegex = /(v2\.users\.)(.*)\.(.*)/g
+        const match = topicRegex.exec(topicName)
+        if (!match) return
 
-      const userId = match[2]
-      const updatedProperty = match[3]
-      console.log('User event:', userId, updatedProperty)
+        const userId = match[2]
+        const updatedProperty = match[3]
+        console.log('User event:', userId, updatedProperty)
 
-      const queueMember = this.queueMembers.find(member => member.id === userId)
-      if (!queueMember?.user) {
-        console.error('User not found in queue')
-        return
-      }
+        const queueMember = this.queueMembers.find(member => member.id === userId)
+        if (!queueMember?.user) {
+          console.error('User not found in queue')
+          return
+        }
 
-      switch (updatedProperty) {
-        case 'presence': {
-          if (queueMember.user.presence && eventBody.presenceDefinition) {
-            // Store the original presence ID and system presence before updating
-            const presenceId = eventBody.presenceDefinition.id || ''
-            const originalSystemPresence = genesyscloudService.getPresenceName(presenceId)
+        switch (updatedProperty) {
+          case 'presence': {
+            if (queueMember.user.presence && eventBody.presenceDefinition) {
+              // Store the original presence ID and system presence before updating
+              const presenceId = eventBody.presenceDefinition.id || ''
+              const originalSystemPresence = genesyscloudService.getPresenceName(presenceId)
 
-            // Update the presence definition
-            queueMember.user.presence.presenceDefinition = eventBody.presenceDefinition
+              // Update the presence definition
+              queueMember.user.presence.presenceDefinition = eventBody.presenceDefinition
 
-            // Always store the original system presence
-            if (queueMember.user.presence.presenceDefinition) {
-              queueMember.user.presence.presenceDefinition.originalSystemPresence = originalSystemPresence
+              // Always store the original system presence
+              if (queueMember.user.presence.presenceDefinition) {
+                queueMember.user.presence.presenceDefinition.originalSystemPresence = originalSystemPresence
+              }
+
+              // Safely update modifiedDate
+              // modifiedDate can be > now (!) -> modifiedDate := now
+              const modifiedDate = new Date(eventBody.modifiedDate)
+              const adjustedNow = new Date(Date.now() + genesyscloudService.getServerOffset())
+              if (modifiedDate > adjustedNow) {
+                queueMember.user.presence.modifiedDate = adjustedNow.toISOString()
+              } else {
+                queueMember.user.presence.modifiedDate = eventBody.modifiedDate
+              }
+
+              // After updating presence, recalculate the effective status
+              this.updateEffectiveStatusForMember(queueMember)
             }
-
-            // Safely update modifiedDate
-            // modifiedDate can be > now (!) -> modifiedDate := now
-            const modifiedDate = new Date(eventBody.modifiedDate)
-            const adjustedNow = new Date(Date.now() + genesyscloudService.getServerOffset())
-            if (modifiedDate > adjustedNow) {
-              queueMember.user.presence.modifiedDate = adjustedNow.toISOString()
-            } else {
-              queueMember.user.presence.modifiedDate = eventBody.modifiedDate
-            }
-
-            // After updating presence, recalculate the effective status
-            this.updateEffectiveStatusForMember(queueMember)
+            break
           }
-          break
-        }
-        case 'routingStatus': {
-          // Update routing status
-          queueMember.user.routingStatus = eventBody.routingStatus
-          
-          // No need to show an alert anymore as we'll highlight it visually
-          // if (eventBody.routingStatus.status === 'NOT_RESPONDING') {
-          //   this.showNotRespondingAlert(queueMember.user)
-          // }
-          break
-        }
-        case 'outofoffice': {
-          // Update out of office data
-          queueMember.user.outOfOffice = eventBody
+          case 'routingStatus': {
+            // Update routing status
+            queueMember.user.routingStatus = eventBody.routingStatus
+            break
+          }
+          case 'outofoffice': {
+            // Update out of office data
+            queueMember.user.outOfOffice = eventBody
 
-          // After updating out ofOffice, recalculate the effective status
-          this.updateEffectiveStatusForMember(queueMember)
-          break
+            // After updating outOfOffice, recalculate the effective status
+            this.updateEffectiveStatusForMember(queueMember)
+            break
+          }
+        }
+      } else if (topicName.includes('v2.routing.queues')) {
+        const metadata = data.metadata
+        if (eventBody.queueId === this.queue.id) {
+          switch (metadata.action) {
+            case 'add': {
+              genesyscloudService.getUserDetails(eventBody.user.id).then(user => {
+                this.queueMembers.push({ id: user.id, name: user.name, user: user, joined: eventBody.joined })
+                this.updateSubscriptions()
+              })
+              break
+            }
+            case 'delete': {
+              const index = this.queueMembers.findIndex(member => member.id === eventBody.user.id)
+              if (index !== -1) {
+                this.queueMembers.splice(index, 1)
+                this.updateSubscriptions()
+              }
+              break
+            }
+            case 'update': {
+              const queueMember = this.queueMembers.find(member => member.id === eventBody.user.id)
+              if (queueMember) {
+                queueMember.joined = eventBody.joined
+              }
+              break
+            }
+          }
         }
       }
     },

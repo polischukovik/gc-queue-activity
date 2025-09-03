@@ -4,11 +4,16 @@ import config from '@/config/config'
 const routingApi = new platformClient.RoutingApi()
 const notificationsApi = new platformClient.NotificationsApi()
 const presenceApi = new platformClient.PresenceApi()
+const usersApi = new platformClient.UsersApi()
 const client = platformClient.ApiClient.instance
+
+let channelId = ''
 
 let userStatusWebsocket: WebSocket
 let presenceDefinitions: { [key: string]: string } = {}
 let serverOffset = 0
+let notificationCallback: ((data: any) => void) | null = null
+let lastTopics: platformClient.Models.ChannelTopic[] = []
 
 // Define the OutOfOffice interface
 interface OutOfOfficeData {
@@ -122,35 +127,85 @@ export default {
     return data.entities
   },
 
-  async subscribeToUsersStatus (userIds: string[], callbacks: ((message: MessageEvent) => void)[]): Promise<void> {
-    let channelId = ''
+  async getUserDetails(userId: string): Promise<platformClient.Models.User> {
+    return await usersApi.getUser(userId, { expand: ['presence', 'routingStatus', 'outOfOffice'] });
+  },
 
+  async createNotificationChannel(callback: (data: any) => void): Promise<void> {
+    notificationCallback = callback
     const channel = await notificationsApi.postNotificationsChannels()
 
     if (!channel.connectUri || !channel.id) throw new Error('Channel not created')
     console.log('Channel created')
     channelId = channel.id
 
-    // Assign callbacks to websocket
+    this.setupWebSocket(channel.connectUri)
+  },
+
+  setupWebSocket (connectUri: string): void {
     if (userStatusWebsocket) userStatusWebsocket.close()
-    userStatusWebsocket = new WebSocket(channel.connectUri)
-    userStatusWebsocket.onmessage = (message) => {
-      for (const cb of callbacks) {
-        cb(message)
-      }
+    userStatusWebsocket = new WebSocket(connectUri)
+
+    userStatusWebsocket.onopen = () => {
+      console.log('WebSocket connection established.')
     }
 
-    // Subscribe to topics
-    const topics: platformClient.Models.ChannelTopic[] = []
-    userIds.forEach(userId => {
-      // Combined topic for presence, routingStatus, and outOfOffice
-      topics.push({
-        id: `v2.users.${userId}?presence&routingStatus&outofoffice`
-      })
-    })
+    userStatusWebsocket.onmessage = (message) => {
+      const data = JSON.parse(message.data)
+      if (data.topicName === 'channel.heartbeat') {
+        // Optional: implement a heartbeat timeout
+        return
+      }
+      if (notificationCallback) notificationCallback(data)
+    }
 
-    await notificationsApi.postNotificationsChannelSubscriptions(channelId, topics)
-    console.log('Subscribed to topics')
+    userStatusWebsocket.onclose = () => {
+      console.log('WebSocket disconnected.')
+      // Use a small delay before attempting to reconnect
+      setTimeout(() => this.reconnect(), 3000)
+    }
+
+    userStatusWebsocket.onerror = (error) => {
+      console.error('WebSocket error:', error)
+      // onclose will be called, triggering the reconnect logic
+    }
+  },
+
+  async reconnect (): Promise<void> {
+    console.log('Attempting to reconnect WebSocket...')
+    try {
+      // Check if the channel is still valid by getting all channels and finding it.
+      const channels = await notificationsApi.getNotificationsChannels();
+      const currentChannel = channels.entities?.find(c => c.id === channelId);
+
+      if (!currentChannel) {
+        // If the channel is not in the list, it's no longer valid.
+        throw new Error('Notification channel not found');
+      }
+      
+      // If successful, the channel is valid. Just re-establish the WebSocket connection.
+      console.log('Channel is still valid. Re-establishing WebSocket connection.')
+      this.setupWebSocket(currentChannel.connectUri!)
+    } catch (e) {
+      // If it fails, the channel is gone. Create a new one and re-subscribe.
+      console.log('Channel is no longer valid. Creating a new channel and re-subscribing.')
+      if (notificationCallback) {
+        await this.createNotificationChannel(notificationCallback)
+        // Re-subscribe to the last known topics
+        if (lastTopics.length > 0) {
+          await this.subscribeToTopics(lastTopics)
+        }
+      } else {
+        console.error('Cannot reconnect: notification callback is missing.')
+      }
+    }
+  },
+
+  async subscribeToTopics(topics: platformClient.Models.ChannelTopic[]): Promise<void> {
+    if (!channelId) throw new Error('Notification channel not created')
+    await notificationsApi.putNotificationsChannelSubscriptions(channelId, topics)
+    lastTopics = topics // Store topics for re-subscription on reconnect
+    console.log('Subscriptions replaced')
   },
 
   // Get presence name by presence ID
