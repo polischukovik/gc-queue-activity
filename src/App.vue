@@ -63,11 +63,13 @@ select {
 import genesysCloud from '@/services/genesyscloud-service'
 import config from '@/config/config'
 
+import router from './router'
+
 export default {
   name: 'Agent Monitoring App',
   async created (): Promise<void> {
     await genesysCloud.loginImplicitGrant()
-    history.pushState({}, '', config.redirectUri)
+    router.push('/')
   }
 }
 </script>

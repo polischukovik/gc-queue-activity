@@ -80,13 +80,13 @@ export default {
         {},
         {},
         null,
-        ['PureCloudPlatformClientV2'],
+        ['PureCloud OAuth'],
         ['application/json'],
         ['application/json']
       )
       console.log('Server time response:', response)
-      if (response && response.currentTime) {
-        return new Date(response.currentTime)
+      if (response && response.currentDate) {
+        return new Date(response.currentDate)
       } else {
         console.error('Invalid server time response:', response)
         return new Date()

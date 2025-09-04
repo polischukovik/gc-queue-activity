@@ -6,9 +6,11 @@
     <div class="info">
       <div class="name">{{ name }}</div>
       <div class="status-line">
-        <span class="presence">{{ presence }}</span>
-        <span v-if="isNotResponding" class="not-responding-badge">Not Responding</span>
-        <span class="status-duration" v-html="formattedTimeInStatus"></span>
+        <div class="status-left-group">
+          <span class="presence">{{ presence }}</span>
+          <span v-if="isNotResponding" class="not-responding-badge">Not Responding</span>
+          <span class="status-duration" v-html="formattedTimeInStatus"></span>
+        </div>
         <span v-if="!queueMember.joined" class="joined-status inactive">{{ joinedStatus }}</span>
       </div>
     </div>
@@ -71,11 +73,17 @@
 
 .status-line {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 6px;
   color: #4E5054;
   font-size: 0.75rem;
   text-align: left;
+}
+
+.status-left-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 .presence,
@@ -121,7 +129,7 @@ import platformClient from 'purecloud-platform-client-v2'
 import genesysCloudService from '@/services/genesyscloud-service'
 import { defineComponent, PropType } from 'vue'
 
-const defaultProfilePicture = '/img/icon-queue-activity.svg';
+const defaultProfilePicture = './img/icon-queue-activity.svg';
 
 export default defineComponent({
   name: 'QueueMemberDetails',
