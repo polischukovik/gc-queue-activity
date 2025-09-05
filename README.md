@@ -1,4 +1,5 @@
 # Queue Agent Monitoring app
+inspired by [genesys blueprint](https://developer.genesys.cloud/blueprints/agent-monitoring-app-blueprint/)
 
 ## Project setup
 ```
